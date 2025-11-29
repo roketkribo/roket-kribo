@@ -448,4 +448,257 @@
 
     // flame
     if (thrust) {
-      ctx.save
+      ctx.save();
+      ctx.translate(-w / 2 - 10, 0);
+      ctx.scale(1, 0.8 + Math.random() * 0.4);
+      const g = ctx.createLinearGradient(-26, 0, 4, 0);
+      g.addColorStop(0, "#facc15");
+      g.addColorStop(1, "#ef4444");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(-24, -10, -30, 0);
+      ctx.quadraticCurveTo(-24, 10, 0, 0);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    ctx.restore();
+  }
+
+  // =========================
+  // INPUT
+  // =========================
+  function startIfReady() {
+    const nick = sanitizeNick(nickInput.value);
+    if (!nick) {
+      alert("Isi nickname dulu (huruf/angka, max 10).");
+      return false;
+    }
+    nickname = nick;
+    return true;
+  }
+
+  function flap() {
+    if (!startIfReady()) return;
+    audio.unlock();
+
+    if (gameState === "idle" || gameState === "dead") {
+      resetGame();
+      gameState = "playing";
+    }
+
+    if (gameState === "playing") {
+      rocketVY = FLAP_V;
+      audio.flap();
+    }
+  }
+
+  canvas.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    flap();
+  });
+
+  window.addEventListener("keydown", (e) => {
+    if (e.code === "Space") {
+      e.preventDefault();
+      flap();
+    }
+  });
+
+  startBtn.addEventListener("click", () => {
+    flap();
+  });
+
+  // =========================
+  // GAME LOOP
+  // =========================
+  let lastTime = performance.now();
+
+  function loop(now) {
+    const dtRaw = Math.min(0.03, (now - lastTime) / 1000);
+    lastTime = now;
+
+    const inSlow = now < slowUntil;
+    const dt = dtRaw * (inSlow ? SLOWMO_SCALE : 1);
+
+    ctx.save();
+    if (shake > 0) {
+      ctx.translate(
+        (Math.random() * 2 - 1) * shake,
+        (Math.random() * 2 - 1) * shake
+      );
+      shake = Math.max(0, shake - 60 * dtRaw);
+    }
+
+    drawBackground(dt);
+
+    // logic
+    if (gameState === "idle") {
+      const x = viewW * 0.22;
+      const y = viewH * 0.5 + Math.sin(now * 0.004) * 10;
+      drawRocketCute(x, y, now, false);
+    } else {
+      // physics
+      rocketVY += GRAVITY * dt;
+      rocketY += rocketVY * dt;
+
+      const speed = pipeSpeed();
+      const pxSpeed = speed * dt;
+
+      // spawn pipes
+      if (
+        pipes.length === 0 ||
+        now - lastPipeAt > PIPE_INTERVAL
+      ) {
+        spawnPipe(now);
+      }
+
+      // move pipes
+      for (const p of pipes) {
+        p.x -= pxSpeed;
+      }
+      pipes = pipes.filter((p) => p.x + p.w > -120);
+
+      // move star
+      if (star && star.alive) {
+        star.x -= pxSpeed;
+        if (star.x < -50) star.alive = false;
+      }
+
+      const r = rocketRect();
+      const hitBox = {
+        x: r.x + 6,
+        y: r.y + 4,
+        w: r.w - 12,
+        h: r.h - 8
+      };
+
+      // collision pipes + scoring
+      for (const p of pipes) {
+        const topRect = { x: p.x, y: 0, w: p.w, h: p.topH };
+        const botRect = {
+          x: p.x,
+          y: p.bottomY,
+          w: p.w,
+          h: p.bottomH
+        };
+
+        if (hitRect(hitBox, topRect) || hitRect(hitBox, botRect)) {
+          gameOver();
+          break;
+        }
+
+        if (!p.passed && p.x + p.w < r.x) {
+          p.passed = true;
+          score += 1;
+          combo += 1;
+          audio.score();
+
+          if (score > bestLocal) {
+            bestLocal = score;
+            localStorage.setItem("rk_best", String(bestLocal));
+          }
+
+          // setiap 10 combo -> bintang
+          if (combo > 0 && combo % 10 === 0) {
+            starPending = true;
+          }
+        }
+      }
+
+      // star pickup
+      if (star && star.alive) {
+        const cx = r.x + r.w / 2;
+        const cy = r.y + r.h / 2;
+        const dx = cx - star.x;
+        const dy = cy - star.y;
+        if (dx * dx + dy * dy < (star.r + 16) * (star.r + 16)) {
+          star.alive = false;
+          slowUntil = now + SLOWMO_MS;
+          audio.star();
+          audio.slow();
+        }
+      }
+
+      // out of bounds
+      if (rocketY < -60 || rocketY > viewH + 60) {
+        gameOver();
+      }
+
+      // draw pipes
+      for (const p of pipes) {
+        drawMeteor(p);
+      }
+
+      // draw star
+      if (star && star.alive) {
+        drawStarObj(star, now);
+      }
+
+      // draw rocket
+      const rx = viewW * 0.22;
+      drawRocketCute(rx, rocketY, now, rocketVY < -40);
+    }
+
+    // HUD text di canvas
+    ctx.fillStyle = "rgba(15,23,42,0.7)";
+    ctx.fillRect(10, 10, 150, 64);
+    ctx.fillStyle = "white";
+    ctx.font = "14px system-ui, sans-serif";
+    ctx.fillText("score", 18, 28);
+    ctx.fillText("best", 18, 50);
+    ctx.font = "18px system-ui, sans-serif";
+    ctx.fillStyle = "#facc15";
+    ctx.fillText(String(score), 70, 28);
+    ctx.fillStyle = "#93c5fd";
+    ctx.fillText(String(bestLocal), 70, 50);
+
+    if (gameState === "idle") {
+      ctx.fillStyle = "rgba(15,23,42,0.75)";
+      ctx.fillRect(
+        viewW / 2 - 110,
+        viewH * 0.62 - 30,
+        220,
+        60
+      );
+      ctx.fillStyle = "white";
+      ctx.font = "16px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(
+        "isi nickname lalu tap untuk start",
+        viewW / 2,
+        viewH * 0.62
+      );
+      ctx.textAlign = "start";
+    }
+
+    // flash saat tabrakan
+    if (flash > 0) {
+      ctx.globalAlpha = Math.min(0.3, flash);
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, viewW, viewH);
+      ctx.globalAlpha = 1;
+      flash = Math.max(0, flash - 2.5 * dtRaw);
+    }
+
+    ctx.restore();
+
+    requestAnimationFrame(loop);
+  }
+
+  function gameOver() {
+    if (gameState !== "playing") return;
+    gameState = "dead";
+    audio.boom();
+    shake = 16;
+    flash = 1;
+
+    if (nickname) {
+      submitScore(nickname, score);
+    }
+  }
+
+  resetGame();
+  requestAnimationFrame(loop);
+})();
