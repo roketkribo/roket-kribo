@@ -1,13 +1,13 @@
-// ROKET KRIBO - versi canvas kartun, support HP + leaderboard Google Sheet
+// ROKET KRIBO – versi canvas + leaderboard + mobile friendly
 (() => {
   // =========================
   // CONFIG
   // =========================
   const LEADERBOARD_URL =
-    "https://script.google.com/macros/s/AKfycbxW9xlYm6Ravhkyz3z1BJB2gryKxFMMmgo96uBDRKTP-d4a-aMv3szcCdTqY2L-xwqy/exec";
+    "https://script.google.com/macros/s/AKfycbxW9xlYm6Ravhky2z31BJBI2gryKxFMMmgo96uBDRKTp-d4a-aMv3szCdTqY2I-Xwqy/exec";
 
   const GRAVITY = 1900;         // gravitasi px/s^2
-  const FLAP_V = -600;          // kecepatan loncat
+  const FLAP_V = -600;          // loncatan roket
   const PIPE_INTERVAL = 1500;   // ms antar meteor
   const PIPE_WIDTH = 90;
   const GAP_BASE = 260;
@@ -30,9 +30,10 @@
   const nickInput = document.getElementById("nick");
   const startBtn = document.getElementById("startBtn");
   const leaderBox = document.getElementById("leader");
+  const menuEl = document.querySelector(".menu");
 
-  if (!canvas || !ctx || !nickInput || !startBtn || !leaderBox) {
-    alert("Elemen HTML belum lengkap (canvas#game, input#nick, button#startBtn, div#leader).");
+  if (!canvas || !ctx || !nickInput || !startBtn || !leaderBox || !menuEl) {
+    alert("Elemen HTML belum lengkap (menu, nickname, leaderboard, canvas).");
     return;
   }
 
@@ -72,7 +73,7 @@
   }
 
   // =========================
-  // AUDIO (sederhana)
+  // AUDIO SEDERHANA (beep)
   // =========================
   const audio = {
     ctx: null,
@@ -148,7 +149,14 @@
     }
     try {
       const res = await fetch(LEADERBOARD_URL);
-      const data = await res.json();
+      const text = await res.text();
+      let data = null;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error("Response bukan JSON:", text);
+        throw e;
+      }
       const list = (data && data.top) || [];
       if (!list.length) {
         leaderBox.textContent = "belum ada skor";
@@ -161,7 +169,7 @@
         leaderBox.appendChild(div);
       });
     } catch (e) {
-      console.error(e);
+      console.error("fetchLeaderboard error", e);
       leaderBox.textContent = "gagal memuat leaderboard";
     }
   }
@@ -282,7 +290,6 @@
     ctx.fillStyle = "#020617";
     ctx.fillRect(0, 0, viewW, viewH);
 
-    // gradient langit
     const g = ctx.createLinearGradient(0, 0, 0, viewH);
     g.addColorStop(0, "#0f172a");
     g.addColorStop(1, "#020617");
@@ -304,11 +311,18 @@
     }
     ctx.globalAlpha = 1;
 
-    // planet bumi di kanan-bawah
+    // planet
     const R = Math.min(viewW, viewH) * 0.35;
     const cx = viewW * 0.86;
     const cy = viewH * 0.82;
-    const g2 = ctx.createRadialGradient(cx - R * 0.2, cy - R * 0.25, R * 0.1, cx, cy, R);
+    const g2 = ctx.createRadialGradient(
+      cx - R * 0.2,
+      cy - R * 0.25,
+      R * 0.1,
+      cx,
+      cy,
+      R
+    );
     g2.addColorStop(0, "rgba(96,165,250,0.95)");
     g2.addColorStop(0.5, "rgba(37,99,235,0.9)");
     g2.addColorStop(1, "rgba(15,23,42,0.9)");
@@ -317,7 +331,6 @@
     ctx.fillStyle = g2;
     ctx.fill();
 
-    // sedikit daratan
     ctx.save();
     ctx.clip();
     ctx.globalAlpha = 0.8;
@@ -343,16 +356,13 @@
     const x = pipe.x;
     const w = pipe.w;
 
-    // atas
     ctx.fillStyle = "#7c4a23";
     roundRect(x, 0, w, pipe.topH, 16);
     ctx.fill();
 
-    // bawah
     roundRect(x, pipe.bottomY, w, pipe.bottomH, 16);
     ctx.fill();
 
-    // tekstur
     ctx.fillStyle = "rgba(0,0,0,0.2)";
     for (let i = 0; i < 5; i++) {
       const px = x + 10 + Math.random() * (w - 20);
@@ -370,7 +380,7 @@
     ctx.beginPath();
     for (let i = 0; i < 10; i++) {
       const ang = (Math.PI * 2 * i) / 10;
-      const r = (i % 2 === 0) ? s.r : s.r * 0.45;
+      const r = i % 2 === 0 ? s.r : s.r * 0.45;
       ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
     }
     ctx.closePath();
@@ -486,6 +496,7 @@
     if (gameState === "idle" || gameState === "dead") {
       resetGame();
       gameState = "playing";
+      if (menuEl) menuEl.classList.add("playing"); // sembunyikan menu
     }
 
     if (gameState === "playing") {
@@ -533,34 +544,26 @@
 
     drawBackground(dt);
 
-    // logic
     if (gameState === "idle") {
       const x = viewW * 0.22;
       const y = viewH * 0.5 + Math.sin(now * 0.004) * 10;
       drawRocketCute(x, y, now, false);
     } else {
-      // physics
       rocketVY += GRAVITY * dt;
       rocketY += rocketVY * dt;
 
       const speed = pipeSpeed();
       const pxSpeed = speed * dt;
 
-      // spawn pipes
-      if (
-        pipes.length === 0 ||
-        now - lastPipeAt > PIPE_INTERVAL
-      ) {
+      if (pipes.length === 0 || now - lastPipeAt > PIPE_INTERVAL) {
         spawnPipe(now);
       }
 
-      // move pipes
       for (const p of pipes) {
         p.x -= pxSpeed;
       }
       pipes = pipes.filter((p) => p.x + p.w > -120);
 
-      // move star
       if (star && star.alive) {
         star.x -= pxSpeed;
         if (star.x < -50) star.alive = false;
@@ -574,7 +577,6 @@
         h: r.h - 8
       };
 
-      // collision pipes + scoring
       for (const p of pipes) {
         const topRect = { x: p.x, y: 0, w: p.w, h: p.topH };
         const botRect = {
@@ -600,14 +602,12 @@
             localStorage.setItem("rk_best", String(bestLocal));
           }
 
-          // setiap 10 combo -> bintang
           if (combo > 0 && combo % 10 === 0) {
             starPending = true;
           }
         }
       }
 
-      // star pickup
       if (star && star.alive) {
         const cx = r.x + r.w / 2;
         const cy = r.y + r.h / 2;
@@ -621,47 +621,40 @@
         }
       }
 
-      // out of bounds
       if (rocketY < -60 || rocketY > viewH + 60) {
         gameOver();
       }
 
-      // draw pipes
       for (const p of pipes) {
         drawMeteor(p);
       }
 
-      // draw star
       if (star && star.alive) {
         drawStarObj(star, now);
       }
 
-      // draw rocket
       const rx = viewW * 0.22;
       drawRocketCute(rx, rocketY, now, rocketVY < -40);
     }
 
-    // HUD text di canvas
-    ctx.fillStyle = "rgba(15,23,42,0.7)";
-    ctx.fillRect(10, 10, 150, 64);
-    ctx.fillStyle = "white";
-    ctx.font = "14px system-ui, sans-serif";
-    ctx.fillText("score", 18, 28);
-    ctx.fillText("best", 18, 50);
-    ctx.font = "18px system-ui, sans-serif";
-    ctx.fillStyle = "#facc15";
-    ctx.fillText(String(score), 70, 28);
-    ctx.fillStyle = "#93c5fd";
-    ctx.fillText(String(bestLocal), 70, 50);
+    // HUD hanya saat main / habis tabrakan
+    if (gameState !== "idle") {
+      ctx.fillStyle = "rgba(15,23,42,0.7)";
+      ctx.fillRect(10, 10, 150, 64);
+      ctx.fillStyle = "white";
+      ctx.font = "14px system-ui, sans-serif";
+      ctx.fillText("score", 18, 28);
+      ctx.fillText("best", 18, 50);
+      ctx.font = "18px system-ui, sans-serif";
+      ctx.fillStyle = "#facc15";
+      ctx.fillText(String(score), 70, 28);
+      ctx.fillStyle = "#93c5fd";
+      ctx.fillText(String(bestLocal), 70, 50);
+    }
 
     if (gameState === "idle") {
       ctx.fillStyle = "rgba(15,23,42,0.75)";
-      ctx.fillRect(
-        viewW / 2 - 110,
-        viewH * 0.62 - 30,
-        220,
-        60
-      );
+      ctx.fillRect(viewW / 2 - 110, viewH * 0.62 - 30, 220, 60);
       ctx.fillStyle = "white";
       ctx.font = "16px system-ui, sans-serif";
       ctx.textAlign = "center";
@@ -673,7 +666,6 @@
       ctx.textAlign = "start";
     }
 
-    // flash saat tabrakan
     if (flash > 0) {
       ctx.globalAlpha = Math.min(0.3, flash);
       ctx.fillStyle = "white";
@@ -683,7 +675,6 @@
     }
 
     ctx.restore();
-
     requestAnimationFrame(loop);
   }
 
@@ -697,6 +688,10 @@
     if (nickname) {
       submitScore(nickname, score);
     }
+
+    setTimeout(() => {
+      if (menuEl) menuEl.classList.remove("playing"); // munculkan menu lagi
+    }, 600);
   }
 
   resetGame();
