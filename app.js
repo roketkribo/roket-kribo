@@ -4,7 +4,7 @@
   // CONFIG
   // =========================
   const LEADERBOARD_URL =
-    "https://script.google.com/macros/s/AKfycby8vQnvrzA1YQVoD04SMR0_rnT3obkqtwRH0qpX1A9hlrx-okyQf5qEv8ehgsQbI0l9/exec";
+    "https://script.google.com/macros/s/AKfycbx8vQnvrzA1YQVd04SMR0_rnT3obkqtwRH0qpX1A9H1r-OKyQf5cEv8ehgsQbI0/exec";
 
   const GRAVITY = 1900;         // gravitasi px/s^2
   const FLAP_V = -600;          // loncatan roket
@@ -697,4 +697,5 @@
   resetGame();
   requestAnimationFrame(loop);
 })();
+
 
