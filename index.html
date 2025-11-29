@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Roket Kribo</title>
+  <meta name="theme-color" content="#1d4ed8" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+
+<body>
+  <!-- Game canvas -->
+  <canvas id="game" aria-label="Roket Kribo game canvas"></canvas>
+
+  <!-- HUD (always on top when playing) -->
+  <header class="hud" aria-hidden="false">
+    <div class="hud__left">
+      <div class="brand">
+        <span class="brand__logo">🚀</span>
+        <span class="brand__name">Roket <b>Kribo</b></span>
+      </div>
+
+      <div class="stats">
+        <div class="pill pill--yellow">
+          <span class="pill__label">score</span>
+          <span class="pill__value" id="score">0</span>
+        </div>
+        <div class="pill pill--red">
+          <span class="pill__label">combo</span>
+          <span class="pill__value" id="combo">0</span>
+        </div>
+        <div class="pill pill--blue">
+          <span class="pill__label">best</span>
+          <span class="pill__value" id="bestSession">0</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hud__right">
+      <button id="btnSfx" class="iconbtn" type="button" title="SFX">🔊</button>
+      <button id="btnMusic" class="iconbtn" type="button" title="Music">🎵</button>
+    </div>
+  </header>
+
+  <!-- Slowmo clock -->
+  <div id="clock" class="clock" aria-hidden="true">
+    <div class="clock__ring">
+      <div id="clockFill" class="clock__fill"></div>
+      <div class="clock__text">slow</div>
+    </div>
+  </div>
+
+  <!-- MENU OVERLAY -->
+  <main id="menu" class="overlay show" role="dialog" aria-modal="true">
+    <div class="panel panel--fun">
+      <div class="panel__top">
+        <h1 class="title">
+          <span class="title__emoji">🪐</span>
+          <span>Roket <b>Kribo</b></span>
+        </h1>
+        <p class="subtitle">
+          tap / klik untuk terbang. ambil ⭐ tiap 10 combo untuk <b>slow motion 3 detik</b>!
+        </p>
+      </div>
+
+      <div class="grid">
+        <section class="card card--primary">
+          <h2 class="card__title">Mulai main</h2>
+
+          <label class="field">
+            <span class="field__label">nickname (huruf/angka max 10)</span>
+            <div class="field__row">
+              <input id="nickname" class="input" type="text" inputmode="text" maxlength="10" placeholder="misal: kribo99" />
+              <button id="btnStart" class="btn btn--big btn--yellow" type="button">START 🚀</button>
+            </div>
+            <div id="nickHint" class="hint"></div>
+          </label>
+
+          <div class="actions">
+            <button id="btnHow" class="btn btn--blue" type="button">cara main</button>
+            <span class="chip">space / tap</span>
+            <span class="chip">hindari meteor</span>
+            <span class="chip">kejar combo</span>
+          </div>
+
+          <div id="howBox" class="how">
+            <ul class="how__list">
+              <li><b>Tap / klik</b> untuk naik</li>
+              <li><b>Lewati meteor</b> untuk dapat score</li>
+              <li><b>Combo</b> naik tiap lolos meteor</li>
+              <li><b>Setiap 10 combo</b> muncul ⭐, ambil untuk slow motion</li>
+              <li><b>Tabrak meteor</b> = game over 💥</li>
+            </ul>
+          </div>
+        </section>
+
+        <aside class="card card--secondary">
+          <h2 class="card__title">Global Best Score (Top 5)</h2>
+          <p id="lbNote" class="mini">
+            leaderboard belum dihubungkan (nanti pakai Google Sheet gratis)
+          </p>
+          <ol id="lbList" class="leaderboard"></ol>
+
+          <div class="tips">
+            <div class="tip">
+              <span class="tip__icon">💡</span>
+              <div class="tip__text">Target awal: combo 10 dulu biar dapat ⭐</div>
+            </div>
+            <div class="tip">
+              <span class="tip__icon">🎯</span>
+              <div class="tip__text">Main pelan: tap kecil-kecil, jangan panik</div>
+            </div>
+          </div>
+
+          <div class="footerbadge">
+            <span class="footerbadge__dot"></span>
+            v1 • warna kribo: kuning merah biru
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <!-- GAMEOVER OVERLAY -->
+  <section id="gameover" class="overlay" role="dialog" aria-modal="true">
+    <div class="panel panel--pop">
+      <h2 class="boom">💥 BOOM! 💥</h2>
+      <p class="result">
+        score kamu: <b id="finalScore">0</b> • best: <b id="finalBest">0</b>
+      </p>
+
+      <div class="rowbtn">
+        <button id="btnRetry" class="btn btn--big btn--yellow" type="button">MAIN LAGI</button>
+        <button id="btnBack" class="btn btn--big btn--blue" type="button">MENU</button>
+      </div>
+
+      <p class="mini">tips: kalau meteor terasa rapat, fokus jaga tinggi roket di tengah gap</p>
+    </div>
+  </section>
+
+  <script src="./app.js"></script>
+</body>
+</html>
