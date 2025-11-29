@@ -54,9 +54,15 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  pointer-events: none; /* default: biar klik tembus ke canvas,
-                          nanti bagian yang butuh klik kita hidupkan */
+  pointer-events: none; /* default: tembus ke canvas */
   z-index: 10;
+}
+
+/* menu disembunyikan saat bermain */
+.menu.playing {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
 }
 
 /* card utama */
@@ -201,7 +207,6 @@ body {
 }
 
 /* ====== LAYOUT RESPONSIVE ====== */
-
 @media (min-width: 720px) {
   .menu {
     padding: 18px 26px;
